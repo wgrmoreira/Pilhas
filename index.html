@@ -138,12 +138,14 @@
         let highScore = localStorage.getItem('pilhasHighScore') || 0;
         document.getElementById('highScoreText').innerText = highScore;
 
+        // Adicionada a 6ª cor (Laranja) para o nível de 3000 pontos
         const TYPES = [
             { id: 0, color: '#ff4d4d', dark: '#b30000', light: '#ff8080' },
             { id: 1, color: '#ffd633', dark: '#b38f00', light: '#ffe680' },
             { id: 2, color: '#b366ff', dark: '#6600cc', light: '#cc99ff' },
             { id: 3, color: '#4da6ff', dark: '#0059b3', light: '#80c1ff' },
-            { id: 4, color: '#33cc33', dark: '#1e7b1e', light: '#70db70' }
+            { id: 4, color: '#33cc33', dark: '#1e7b1e', light: '#70db70' },
+            { id: 5, color: '#ff9900', dark: '#cc7a00', light: '#ffb84d' } // Laranja
         ];
         const MOTIVATIONS = ['Ótimo!', 'Excelente!', 'Incrível!', 'Brilhante!', 'Fantástico!', 'Genial!', 'Perfeito!', 'Espetacular!', 'Magnífico!', 'Supremo!'];
 
@@ -182,7 +184,12 @@
 
         function generateStack() {
             let stackSize = Math.floor(Math.random() * 3) + 2; let stack = [];
-            for (let j = 0; j < stackSize; j++) stack.push(TYPES[Math.floor(Math.random() * TYPES.length)].id);
+            // Regra de Dificuldade: Se passar de 3000 pontos, libera a 6ª cor
+            let availableColors = score >= 3000 ? 6 : 5; 
+            
+            for (let j = 0; j < stackSize; j++) {
+                stack.push(TYPES[Math.floor(Math.random() * availableColors)].id);
+            }
             return stack;
         }
 
@@ -193,7 +200,13 @@
             for (let i = 0; i < 3; i++) deck.push({ x: startX + (i * spacing), y: deckY, stack: generateStack() });
         }
 
-        function hexToPixel(q, r) { return { x: HEX_SIZE * Math.sqrt(3) * (q + r / 2) + boardOffsetX, y: HEX_SIZE * 3/2 * r + boardOffsetY }; }
+        // Retornamos à conversão clássica que preserva o espaçamento charmoso entre as casas
+        function hexToPixel(q, r) { 
+            return { 
+                x: HEX_SIZE * Math.sqrt(3) * (q + r / 2) + boardOffsetX, 
+                y: HEX_SIZE * 3/2 * r + boardOffsetY 
+            }; 
+        }
         
         function pixelToHex(x, y) {
             let px = x - boardOffsetX; let py = (y - boardOffsetY) / SCALE_Y;
@@ -210,12 +223,10 @@
                 let angle = Math.PI / 180 * (60 * i - 30);
                 points.push({ x: x + size * Math.cos(angle), y: y + size * Math.sin(angle) });
             }
-            
             ctx.beginPath();
             ctx.moveTo(points[0].x + (points[1].x - points[0].x) * 0.5, points[0].y + (points[1].y - points[0].y) * 0.5);
             for (let i = 1; i <= 6; i++) {
-                let p1 = points[i % 6];
-                let p2 = points[(i + 1) % 6];
+                let p1 = points[i % 6]; let p2 = points[(i + 1) % 6];
                 ctx.arcTo(p1.x, p1.y, p2.x, p2.y, radius);
             }
             ctx.closePath();
@@ -268,12 +279,26 @@
         }
 
         function updateScore(points) {
-            score += points; document.getElementById('scoreText').innerText = score;
-            if (score > highScore) { highScore = score; localStorage.setItem('pilhasHighScore', highScore); document.getElementById('highScoreText').innerText = highScore; }
+            let previousScore = score;
+            score += points; 
+            document.getElementById('scoreText').innerText = score;
+            
+            // Verifica desbloqueio da nova cor
+            if (previousScore < 3000 && score >= 3000) {
+                spawnFloater(canvas.width / 2, canvas.height / 2, "Nova Cor Desbloqueada!");
+                playSound('clear');
+            }
+
+            if (score > highScore) { 
+                highScore = score; 
+                localStorage.setItem('pilhasHighScore', highScore); 
+                document.getElementById('highScoreText').innerText = highScore; 
+            }
         }
 
-        function spawnFloater(x, y) {
-            let text = MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
+        // Adicionado suporte para texto customizado no floater
+        function spawnFloater(x, y, customText = null) {
+            let text = customText || MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
             floaters.push({ x: x, y: y, text: text, alpha: 1, life: 90 });
         }
 
@@ -329,17 +354,11 @@
                 }
             }
 
-            if (clearedSomething) {
-                setTimeout(checkBoardState, 50); 
-                return;
-            }
+            if (clearedSomething) { setTimeout(checkBoardState, 50); return; }
 
             let clusterData = findNextCluster();
-            if (clusterData) {
-                processCluster(clusterData);
-            } else {
-                checkGameOver();
-            }
+            if (clusterData) processCluster(clusterData);
+            else checkGameOver();
         }
 
         function processCluster(clusterData) {
@@ -391,17 +410,12 @@
                     anim.targetStack.push(anim.piece); updateScore(10); anim.completed = true;
                 }
             }
-            if (allDone) { 
-                animations = []; isAnimating = false; 
-                setTimeout(checkBoardState, 50); 
-            }
+            if (allDone) { animations = []; isAnimating = false; setTimeout(checkBoardState, 50); }
         }
 
         function checkGameOver() {
             let emptyCount = 0;
-            for (let stack of board.values()) {
-                if (stack.length === 0) emptyCount++;
-            }
+            for (let stack of board.values()) { if (stack.length === 0) emptyCount++; }
             if (emptyCount === 0 && animations.length === 0) {
                 document.getElementById('gameOver').style.display = 'flex';
                 document.getElementById('finalScore').innerText = score;
@@ -418,23 +432,26 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let sortedKeys = Array.from(board.keys()).sort((a, b) => Number(a.split(',')[1]) - Number(b.split(',')[1]));
             
-            // O segredo do Touch Offset agora está aqui: deslocamos o alvo LÓGICO para cima...
+            // O alvo de seleção está amarrado ao Y com um Offset Fixo
             let targetY = mouse.y;
-            if (dragging !== null) targetY -= (HEX_SIZE * 1.6); // Mira deslocada
+            if (dragging !== null) targetY -= (HEX_SIZE * 1.8); 
             
             let hexMouse = dragging !== null ? pixelToHex(mouse.x, targetY) : null;
             let hoverKey = hexMouse ? `${hexMouse.q},${hexMouse.r}` : null;
 
+            // 1. Desenha o tabuleiro base
             for (let key of sortedKeys) {
                 let [q, r] = key.split(',').map(Number);
                 drawHex(hexToPixel(q, r).x, hexToPixel(q, r).y, board.get(key), (key === hoverKey && board.get(key).length === 0));
             }
 
+            // 2. Desenha o deck inferior
             deck.forEach((item, index) => { if (dragging !== index) drawHex(item.x, item.y, item.stack); });
             
-            // ... E também desenhamos a própria peça deslocada para o mesmo lugar da mira!
+            // 3. Desenha a peça flutuando exatamente na mesma posição da seleção
             if (dragging !== null) drawHex(mouse.x, targetY, deck[dragging].stack);
 
+            // 4. Desenha as animações
             animations.forEach(anim => {
                 if (anim.progress > 0) {
                     let arcY = Math.sin(anim.progress * Math.PI) * 45;
@@ -442,6 +459,7 @@
                 }
             });
 
+            // 5. Textos e partículas flutuantes
             for (let i = floaters.length - 1; i >= 0; i--) {
                 let f = floaters[i]; f.y -= 1; f.alpha -= 0.01; f.life--;
                 ctx.save(); ctx.fillStyle = `rgba(255, 235, 59, ${f.alpha})`;
@@ -472,7 +490,7 @@
         
         function handleInputEnd() {
             if (dragging !== null) {
-                let targetY = mouse.y - (HEX_SIZE * 1.6); 
+                let targetY = mouse.y - (HEX_SIZE * 1.8); 
                 let hex = pixelToHex(mouse.x, targetY); 
                 let key = `${hex.q},${hex.r}`;
                 
