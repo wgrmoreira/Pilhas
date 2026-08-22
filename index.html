@@ -38,23 +38,37 @@
         
         button {
             padding: 15px 40px; font-size: 20px; font-weight: 800; font-family: 'Poppins';
-            background: linear-gradient(to bottom, #47d147, #33cc33); color: white; border: none; border-radius: 12px; cursor: pointer;
-            box-shadow: 0 6px 0 #248f24, 0 10px 20px rgba(0,0,0,0.4);
+            background: linear-gradient(to bottom, #98ddca, #75c6af);
+            color: #1e1e2f; border: none; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 6px 0 #5fb09a, 0 10px 20px rgba(0,0,0,0.4);
             transition: transform 0.1s, box-shadow 0.1s; margin-top: 20px;
         }
-        button:active { transform: translateY(6px); box-shadow: 0 0px 0 #248f24, 0 5px 10px rgba(0,0,0,0.4); }
+        button:active { transform: translateY(6px); box-shadow: 0 0px 0 #5fb09a, 0 5px 10px rgba(0,0,0,0.4); }
 
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: none; flex-direction: column; justify-content: space-between; z-index: 10;
         }
-        .header { display: flex; justify-content: space-between; padding: 20px; width: 100%; max-width: 600px; margin: 0 auto; }
+        
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 20px; width: 100%; max-width: 600px; margin: 0 auto; 
+        }
+        
         .score-box {
             background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
             padding: 10px 20px; border-radius: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); flex: 1; max-width: 120px;
         }
+        
         .score-box span { display: block; font-size: 24px; font-weight: 800; color: #ffeb3b; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        
+        .middle-text {
+            flex: 1; text-align: center; font-size: 16px; font-weight: 800; 
+            color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); line-height: 1.2;
+        }
+
         canvas { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
     </style>
 </head>
@@ -70,6 +84,7 @@
     <div id="ui-layer">
         <div class="header">
             <div class="score-box">Pontos <span id="scoreText">0</span></div>
+            <div class="middle-text">Pontue<br>com 7</div>
             <div class="score-box">Recorde <span id="highScoreText">0</span></div>
         </div>
     </div>
@@ -123,25 +138,24 @@
         let highScore = localStorage.getItem('pilhasHighScore') || 0;
         document.getElementById('highScoreText').innerText = highScore;
 
-        // Adicionada a propriedade "light" para fazer o brilho do gradiente
         const TYPES = [
-            { id: 0, color: '#ff4d4d', dark: '#b30000', light: '#ff8080', img: '🍎' },
-            { id: 1, color: '#ffd633', dark: '#b38f00', light: '#ffe680', img: '🍌' },
-            { id: 2, color: '#b366ff', dark: '#6600cc', light: '#cc99ff', img: '🍇' },
-            { id: 3, color: '#4da6ff', dark: '#0059b3', light: '#80c1ff', img: '🧊' },
-            { id: 4, color: '#33cc33', dark: '#1e7b1e', light: '#70db70', img: '🥝' }
+            { id: 0, color: '#ff4d4d', dark: '#b30000', light: '#ff8080' },
+            { id: 1, color: '#ffd633', dark: '#b38f00', light: '#ffe680' },
+            { id: 2, color: '#b366ff', dark: '#6600cc', light: '#cc99ff' },
+            { id: 3, color: '#4da6ff', dark: '#0059b3', light: '#80c1ff' },
+            { id: 4, color: '#33cc33', dark: '#1e7b1e', light: '#70db70' }
         ];
         const MOTIVATIONS = ['Ótimo!', 'Excelente!', 'Incrível!', 'Brilhante!', 'Fantástico!', 'Genial!', 'Perfeito!', 'Espetacular!', 'Magnífico!', 'Supremo!'];
 
-        let HEX_SIZE = 36; let SCALE_Y = 0.65; let THICKNESS = 8;
+        let HEX_SIZE = 45; let SCALE_Y = 0.65; let THICKNESS = 10;
         let board = new Map(); let deck = []; let dragging = null; let mouse = { x: 0, y: 0 };
         let animations = []; let floaters = []; let isAnimating = false;
         let boardOffsetX, boardOffsetY;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            boardOffsetX = canvas.width / 2; boardOffsetY = canvas.height * 0.45;
-            HEX_SIZE = Math.min(canvas.width / 12, 42); // Peças ligeiramente maiores
+            boardOffsetX = canvas.width / 2; boardOffsetY = canvas.height * 0.48; 
+            HEX_SIZE = Math.min(canvas.width / 10, 50); 
         }
         window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
@@ -174,7 +188,7 @@
 
         function fillDeck() {
             deck = [];
-            let spacing = Math.min(canvas.width / 3.5, 120);
+            let spacing = Math.min(canvas.width / 3.5, 140);
             let startX = canvas.width / 2 - spacing; let deckY = canvas.height * 0.85;
             for (let i = 0; i < 3; i++) deck.push({ x: startX + (i * spacing), y: deckY, stack: generateStack() });
         }
@@ -190,7 +204,6 @@
             return { q: rq, r: rr };
         }
 
-        // NOVA FUNÇÃO: Desenha Hexágono com cantos arredondados
         function drawRoundedHexShape(ctx, x, y, size, radius) {
             const points = [];
             for (let i = 0; i < 6; i++) {
@@ -211,52 +224,44 @@
         function drawHex(x, y, stack, isHover = false) {
             ctx.save(); ctx.translate(x, y); ctx.scale(1, SCALE_Y);
             
-            const cornerRadius = HEX_SIZE * 0.15; // 15% do tamanho = cantos arredondados e bonitos
+            const cornerRadius = HEX_SIZE * 0.15;
 
-            // Base do Tabuleiro
             drawRoundedHexShape(ctx, 0, 0, HEX_SIZE, cornerRadius);
-            ctx.fillStyle = isHover ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.25)'; ctx.fill();
-            ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+            ctx.fillStyle = isHover ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.4)'; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.stroke();
+
+            let topCount = 0;
+            if (stack.length > 0) {
+                let topColorId = stack[stack.length - 1];
+                for (let k = stack.length - 1; k >= 0; k--) {
+                    if (stack[k] === topColorId) topCount++;
+                    else break;
+                }
+            }
 
             for (let i = 0; i < stack.length; i++) {
                 let offsetY = - (i * THICKNESS); let type = TYPES[stack[i]];
 
-                // Lado 3D (Espessura) com sombra suave
                 drawRoundedHexShape(ctx, 0, offsetY + (THICKNESS/2), HEX_SIZE, cornerRadius);
                 let gradSide = ctx.createLinearGradient(0, offsetY, 0, offsetY + THICKNESS + 5);
-                gradSide.addColorStop(0, type.color);
-                gradSide.addColorStop(1, type.dark);
-                ctx.fillStyle = gradSide; 
-                ctx.fill();
+                gradSide.addColorStop(0, type.color); gradSide.addColorStop(1, type.dark);
+                ctx.fillStyle = gradSide; ctx.fill();
 
-                // Topo da peça com luz simulada
                 drawRoundedHexShape(ctx, 0, offsetY, HEX_SIZE, cornerRadius);
                 let gradTop = ctx.createLinearGradient(0, -HEX_SIZE, 0, HEX_SIZE);
-                gradTop.addColorStop(0, type.light);
-                gradTop.addColorStop(1, type.color);
-                ctx.fillStyle = gradTop; 
-                ctx.fill();
+                gradTop.addColorStop(0, type.light); gradTop.addColorStop(1, type.color);
+                ctx.fillStyle = gradTop; ctx.fill();
 
-                // Brilho Specular (borda interna de plástico)
-                ctx.lineWidth = 1.5; 
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; 
-                ctx.stroke();
-
-                // Sombra sutil para contornar a peça
-                ctx.lineWidth = 0.5;
-                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-                ctx.stroke();
+                ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
+                ctx.lineWidth = 0.5; ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
 
                 if (i === stack.length - 1) {
                     ctx.save(); ctx.translate(0, offsetY); ctx.scale(1, 1/SCALE_Y); 
-                    
-                    // Sombrinha no Emoji
-                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                    ctx.shadowBlur = 4;
-                    ctx.shadowOffsetY = 2;
-                    
-                    ctx.fillStyle = '#fff'; ctx.font = `${HEX_SIZE * 0.55}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(type.img, 0, 2); ctx.restore();
+                    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+                    ctx.fillStyle = '#ffffff'; ctx.font = `bold ${HEX_SIZE * 0.65}px Poppins, Arial`; 
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(topCount.toString(), 0, 3);
+                    ctx.restore();
                 }
             }
             ctx.restore();
@@ -412,7 +417,12 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let sortedKeys = Array.from(board.keys()).sort((a, b) => Number(a.split(',')[1]) - Number(b.split(',')[1]));
-            let hexMouse = dragging !== null ? pixelToHex(mouse.x, mouse.y) : null;
+            
+            // O segredo do Touch Offset agora está aqui: deslocamos o alvo LÓGICO para cima...
+            let targetY = mouse.y;
+            if (dragging !== null) targetY -= (HEX_SIZE * 1.6); // Mira deslocada
+            
+            let hexMouse = dragging !== null ? pixelToHex(mouse.x, targetY) : null;
             let hoverKey = hexMouse ? `${hexMouse.q},${hexMouse.r}` : null;
 
             for (let key of sortedKeys) {
@@ -421,7 +431,9 @@
             }
 
             deck.forEach((item, index) => { if (dragging !== index) drawHex(item.x, item.y, item.stack); });
-            if (dragging !== null) drawHex(mouse.x, mouse.y, deck[dragging].stack);
+            
+            // ... E também desenhamos a própria peça deslocada para o mesmo lugar da mira!
+            if (dragging !== null) drawHex(mouse.x, targetY, deck[dragging].stack);
 
             animations.forEach(anim => {
                 if (anim.progress > 0) {
@@ -451,14 +463,19 @@
                 if (Math.abs(x - item.x) < HEX_SIZE && Math.abs(y - item.y) < HEX_SIZE) { dragging = index; playSound('grab'); }
             });
         }
+        
         function handleInputMove(e) {
             if (dragging === null) return;
             mouse.x = e.clientX || (e.touches && e.touches[0].clientX);
             mouse.y = e.clientY || (e.touches && e.touches[0].clientY);
         }
+        
         function handleInputEnd() {
             if (dragging !== null) {
-                let hex = pixelToHex(mouse.x, mouse.y); let key = `${hex.q},${hex.r}`;
+                let targetY = mouse.y - (HEX_SIZE * 1.6); 
+                let hex = pixelToHex(mouse.x, targetY); 
+                let key = `${hex.q},${hex.r}`;
+                
                 if (board.has(key) && board.get(key).length === 0) {
                     playSound('click'); 
                     board.set(key, deck[dragging].stack); 
