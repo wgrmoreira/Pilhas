@@ -144,7 +144,7 @@
             { id: 2, color: '#b366ff', dark: '#6600cc', light: '#cc99ff' },
             { id: 3, color: '#4da6ff', dark: '#0059b3', light: '#80c1ff' },
             { id: 4, color: '#33cc33', dark: '#1e7b1e', light: '#70db70' },
-            { id: 5, color: '#ff9900', dark: '#cc7a00', light: '#ffb84d' } // Cor Extra de Dificuldade
+            { id: 5, color: '#ff9900', dark: '#cc7a00', light: '#ffb84d' } 
         ];
         const MOTIVATIONS = ['Ótimo!', 'Excelente!', 'Incrível!', 'Brilhante!', 'Fantástico!', 'Genial!', 'Perfeito!', 'Espetacular!', 'Magnífico!', 'Supremo!'];
 
@@ -153,12 +153,15 @@
         let animations = []; let floaters = []; let isAnimating = false;
         let boardOffsetX, boardOffsetY;
         let DRAG_OFFSET = 0;
+        
+        // NOVO: Variável para rastrear a peça que acabou de ser jogada
+        let lastDroppedKey = null; 
 
         function resizeCanvas() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
             boardOffsetX = canvas.width / 2; boardOffsetY = canvas.height * 0.48; 
             HEX_SIZE = Math.min(canvas.width / 10, 50); 
-            DRAG_OFFSET = HEX_SIZE * 2.5; // Offset acima do dedo
+            DRAG_OFFSET = HEX_SIZE * 2.5; 
         }
         window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
@@ -197,7 +200,6 @@
             for (let i = 0; i < 3; i++) deck.push({ x: startX + (i * spacing), y: deckY, stack: generateStack() });
         }
 
-        // Malha de espaço físico (sem distorção 3D) para manter o vão elegante entre as casas
         function hexToPixel(q, r) { 
             return { 
                 x: HEX_SIZE * Math.sqrt(3) * (q + r / 2) + boardOffsetX, 
@@ -205,7 +207,6 @@
             }; 
         }
         
-        // Malha de seleção (mouse) sincronizada perfeitamente com a malha visual (espaços idênticos em todas as fileiras)
         function pixelToHex(x, y) {
             let px = x - boardOffsetX; let py = y - boardOffsetY; 
             let q = (Math.sqrt(3)/3 * px - 1/3 * py) / HEX_SIZE; let r = (2/3 * py) / HEX_SIZE;
@@ -230,7 +231,6 @@
             ctx.closePath();
         }
 
-        // Nova renderização de Peças Independentes para suporte a Sombras Direcionais
         function drawHexBase(x, y, isHover) {
             ctx.save(); ctx.translate(x, y); ctx.scale(1, SCALE_Y);
             const cornerRadius = HEX_SIZE * 0.15;
@@ -250,7 +250,6 @@
             let offsetY = - (heightIndex * THICKNESS); 
             let type = TYPES[colorId];
 
-            // A Sombra é aplicada aqui. Como o jogo é renderizado "por andares", isso projeta sombra na pilha abaixo!
             ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 8;
             
             drawRoundedHexShape(ctx, 0, offsetY + (THICKNESS/2), HEX_SIZE, cornerRadius);
@@ -258,7 +257,7 @@
             gradSide.addColorStop(0, type.color); gradSide.addColorStop(1, type.dark);
             ctx.fillStyle = gradSide; ctx.fill();
 
-            ctx.shadowColor = 'transparent'; // Remove a sombra no topo para não vazar pra cima
+            ctx.shadowColor = 'transparent';
             drawRoundedHexShape(ctx, 0, offsetY, HEX_SIZE, cornerRadius);
             let gradTop = ctx.createLinearGradient(0, -HEX_SIZE, 0, HEX_SIZE);
             gradTop.addColorStop(0, type.light); gradTop.addColorStop(1, type.color);
@@ -358,9 +357,21 @@
             let { color, nodes } = clusterData;
             
             let targetKey = nodes[0]; let maxCount = -1;
+            
+            // LÓGICA DE DESEMPATE 
             for (let key of nodes) {
                 let count = getColorCount(board.get(key), color);
-                if (count > maxCount) { maxCount = count; targetKey = key; }
+                
+                if (count > maxCount) { 
+                    maxCount = count; 
+                    targetKey = key; 
+                } else if (count === maxCount) {
+                    // REGRA: Se empatar e o targetKey atual for a peça que acabei de jogar,
+                    // eu passo o target (alvo) para a peça mais antiga que já estava no tabuleiro (key).
+                    if (targetKey === lastDroppedKey) {
+                        targetKey = key;
+                    }
+                }
             }
 
             let targetStack = board.get(targetKey);
@@ -390,6 +401,7 @@
                     });
                 }
             }
+            
             if (didMove) playSound('fly');
         }
 
@@ -416,7 +428,6 @@
         }
 
         function resetGame() {
-            // Zerar os pontos antes de recriar o tabuleiro garante que a cor laranja sai do jogo!
             score = 0; document.getElementById('scoreText').innerText = score;
             document.getElementById('gameOver').style.display = 'none';
             initBoard(); fillDeck();
@@ -426,20 +437,17 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let sortedKeys = Array.from(board.keys()).sort((a, b) => Number(a.split(',')[1]) - Number(b.split(',')[1]));
             
-            // Lógica do touch deslocado com alvo matemático alinhado
             let targetY = mouse.y;
             if (dragging !== null) targetY -= DRAG_OFFSET; 
             
             let hexMouse = dragging !== null ? pixelToHex(mouse.x, targetY) : null;
             let hoverKey = hexMouse ? `${hexMouse.q},${hexMouse.r}` : null;
 
-            // 1. Desenha o chão/bases
             for (let key of sortedKeys) {
                 let [q, r] = key.split(',').map(Number);
                 drawHexBase(hexToPixel(q, r).x, hexToPixel(q, r).y, (key === hoverKey && board.get(key).length === 0));
             }
 
-            // 2. Slice Rendering (Desenhando por fatias/andares para as sombras projetarem perfeitamente no andar de baixo)
             let maxStack = 0;
             for (let stack of board.values()) { if (stack.length > maxStack) maxStack = stack.length; }
 
@@ -456,7 +464,6 @@
                 }
             }
 
-            // 3. Desenha o Deck
             deck.forEach((item, index) => { 
                 if (dragging !== index) {
                     drawHexBase(item.x, item.y, false);
@@ -468,7 +475,6 @@
                 }
             });
             
-            // 4. Peça Flutuando Acima do Dedo (Alinhada com a seleção)
             if (dragging !== null) {
                 let item = deck[dragging];
                 for(let i = 0; i < item.stack.length; i++) {
@@ -478,17 +484,15 @@
                 }
             }
 
-            // 5. Animações de Voos
             animations.forEach(anim => {
                 if (anim.progress > 0) {
                     let arcY = Math.sin(anim.progress * Math.PI) * 45;
                     let curX = anim.startX + (anim.endX - anim.startX) * anim.progress;
                     let curY = anim.startY + (anim.endY - anim.startY) * anim.progress - arcY;
-                    drawHexPiece(curX, curY, anim.piece, 0, false, 0); // Altura 0 pois Y já engloba o cálculo físico
+                    drawHexPiece(curX, curY, anim.piece, 0, false, 0); 
                 }
             });
 
-            // 6. Textos
             for (let i = floaters.length - 1; i >= 0; i--) {
                 let f = floaters[i]; f.y -= 1; f.alpha -= 0.01; f.life--;
                 ctx.save(); ctx.fillStyle = `rgba(255, 235, 59, ${f.alpha})`;
@@ -527,7 +531,12 @@
                     playSound('click'); 
                     board.set(key, deck[dragging].stack); 
                     deck.splice(dragging, 1);
+                    
+                    // Salva qual foi o buraco em que acabei de jogar para a regra de desempate
+                    lastDroppedKey = key; 
+                    
                     if (deck.length === 0) fillDeck();
+                    
                     checkBoardState();
                 }
                 dragging = null;
